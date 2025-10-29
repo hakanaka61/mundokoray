@@ -1,11 +1,6 @@
 "use client";
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { Chip } from "@/components/Chip";
 import { Section } from "@/components/Section";
@@ -22,7 +17,7 @@ type ChampInfo = {
   icon: string; // full URL
 };
 
-// Riot verisini çekmek için helperlar
+// Riot'tan en son patch versiyonunu çek
 async function fetchLatestVersion(): Promise<string> {
   try {
     const versions = await fetch(
@@ -34,25 +29,25 @@ async function fetchLatestVersion(): Promise<string> {
   }
 }
 
-async function fetchChampionList(
-  version: string
-): Promise<ChampInfo[]> {
+// Şampiyon listesini (isim + ikon) çek
+async function fetchChampionList(version: string): Promise<ChampInfo[]> {
   const data = await fetch(
-    \`https://ddragon.leagueoflegends.com/cdn/\${version}/data/en_US/champion.json\`
+    `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`
   ).then((r) => r.json());
 
+  const champsData = (data.data ?? {}) as Record<string, any>;
   const arr: ChampInfo[] = [];
 
-  Object.values<any>(data.data).forEach((c: any) => {
+  Object.values(champsData).forEach((c: any) => {
     arr.push({
       id: c.id,
       name: c.name,
       title: c.title,
-      icon: \`https://ddragon.leagueoflegends.com/cdn/\${version}/img/champion/\${c.image.full}\`
+      icon: `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${c.image.full}`,
     });
   });
 
-  // Dr. Mundo'yu ilk sıraya taşıyalım, geri kalan alfabetik
+  // Dr. Mundo'yu yukarı al, kalanları alfabetik sırala
   arr.sort((a, b) => {
     if (a.id === "DrMundo") return -1;
     if (b.id === "DrMundo") return 1;
@@ -62,7 +57,7 @@ async function fetchChampionList(
   return arr;
 }
 
-// difficulty etiketi -> UI label + renk tonu
+// difficulty -> chip text + renk tonu
 function getDifficultyChip(d: MundoMatchup["difficulty"]) {
   if (d === "TEHLIKELI") {
     return { label: "TEHLİKELİ", tone: "danger" as const };
@@ -74,18 +69,18 @@ function getDifficultyChip(d: MundoMatchup["difficulty"]) {
 }
 
 export default function Page() {
-  // Riot versiyon + şamp listesi
+  // Riot versiyon + şampiyon listesi
   const [ddVersion, setDdVersion] = useState<string>("");
   const [champions, setChampions] = useState<ChampInfo[]>([]);
 
   // Kullanıcının seçtiği rakip
-  const [search, setSearch] = useState<string>(""); // filtre input
-  const [enemy, setEnemy] = useState<string>("Gwen"); // varsayılan Gwen
+  const [search, setSearch] = useState<string>(""); // arama kutusu
+  const [enemy, setEnemy] = useState<string>("Gwen"); // default rakip
 
-  // scroll için ref
+  // detay bölümüne scroll etmek için
   const detailRef = useRef<HTMLDivElement | null>(null);
 
-  // Riot'tan veriyi ilk yükle
+  // ilk yüklemede Riot verilerini getir
   useEffect(() => {
     (async () => {
       const v = await fetchLatestVersion();
@@ -95,7 +90,7 @@ export default function Page() {
     })();
   }, []);
 
-  // Arama filtresi
+  // arama filtresi
   const filteredChamps = useMemo(() => {
     const q = search.toLowerCase();
     return champions.filter(
@@ -105,30 +100,30 @@ export default function Page() {
     );
   }, [champions, search]);
 
-  // Maçup datası (Mundo vs enemy)
+  // Mundo vs seçilen rakip datası
   const matchup: MundoMatchup = useMemo(() => {
     return getMundoMatchup(enemy);
   }, [enemy]);
 
-  // Enemy champ icon (gösterim için)
+  // rakip ikonunu bul (yoksa placeholder avatar)
   const enemyIcon =
     champions.find((c) => c.name === enemy)?.icon ??
-    \`https://ui-avatars.com/api/?name=\${encodeURIComponent(
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
       enemy
-    )}&background=0B1220&color=fff&rounded=true&size=64\`;
+    )}&background=0B1220&color=fff&rounded=true&size=64`;
 
+  // Mundo ikonunu Riot'tan çek
   const mundoIcon = ddVersion
-    ? \`https://ddragon.leagueoflegends.com/cdn/\${ddVersion}/img/champion/DrMundo.png\`
-    : \`https://ui-avatars.com/api/?name=\${encodeURIComponent(
+    ? `https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/DrMundo.png`
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
         "Dr. Mundo"
-      )}&background=0B1220&color=fff&rounded=true&size=64\`;
+      )}&background=0B1220&color=fff&rounded=true&size=64`;
 
   const diffChip = getDifficultyChip(matchup.difficulty);
 
   return (
     <main className="flex items-start justify-center w-full p-4 sm:p-6 md:p-10 bg-slate-900 text-slate-50 min-h-screen">
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
-
         {/* SOL PANEL */}
         <section className="rounded-3xl bg-slate-800/60 border border-slate-700 p-5 md:p-6">
           <button className="text-slate-300 hover:text-slate-100 mb-4 text-sm">
@@ -140,7 +135,7 @@ export default function Page() {
           </h1>
 
           <div className="mt-6 grid grid-cols-2 gap-4">
-            {/* Benim şampiyonum */}
+            {/* Benim Şampiyonum */}
             <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4 flex flex-col items-center gap-2">
               <img
                 src={mundoIcon}
@@ -151,13 +146,11 @@ export default function Page() {
                 <div className="text-slate-300 text-xs">
                   Benim Şampiyonum
                 </div>
-                <div className="text-lg font-semibold">
-                  Dr. Mundo
-                </div>
+                <div className="text-lg font-semibold">Dr. Mundo</div>
               </div>
             </div>
 
-            {/* Rakip şampiyon seç */}
+            {/* Rakip Şampiyon */}
             <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4">
               <div className="text-center text-slate-300 text-xs">
                 Rakip Şampiyon
@@ -201,7 +194,7 @@ export default function Page() {
             className="mt-6 w-full rounded-2xl bg-orange-600 hover:bg-orange-500 active:scale-[.99] text-white font-semibold py-3 tracking-wide"
             onClick={() => {
               detailRef.current?.scrollIntoView({
-                behavior: "smooth"
+                behavior: "smooth",
               });
             }}
           >
@@ -218,16 +211,14 @@ export default function Page() {
             ←
           </button>
 
-          {/* Header: Mundo vs Enemy */}
+          {/* Mundo vs Enemy header */}
           <div className="flex flex-wrap items-center gap-3">
             <img
               src={mundoIcon}
               className="w-10 h-10 rounded-full"
               alt="Dr. Mundo"
             />
-            <div className="text-slate-200 font-semibold">
-              Dr. Mundo
-            </div>
+            <div className="text-slate-200 font-semibold">Dr. Mundo</div>
             <div className="text-slate-400">▶</div>
             <img
               src={enemyIcon}
@@ -237,7 +228,7 @@ export default function Page() {
             <div className="text-slate-200 font-semibold">{enemy}</div>
           </div>
 
-          {/* Difficulty / Winrate Chip */}
+          {/* Zorluk / Winrate chipleri */}
           <div className="flex flex-wrap items-center gap-2">
             <Chip tone={diffChip.tone}>{diffChip.label}</Chip>
 
@@ -263,7 +254,7 @@ export default function Page() {
             )}
           </Section>
 
-          {/* Runes */}
+          {/* Rün Planı */}
           <Section title="RÜN PLANI">
             <div className="space-y-3">
               <div>
@@ -307,9 +298,9 @@ export default function Page() {
           </Section>
 
           <div className="text-xs text-slate-400">
-            * Bu build sadece Dr. Mundo için özelleştirildi. Rakip
-            için kayıt yoksa varsayılan tank build ve genel lane
-            planı gösterilir. Güncellemeyi patch patch yapabiliriz.
+            * Bu build sadece Dr. Mundo için özelleştirildi. Rakip için kayıt
+            yoksa varsayılan tank build ve genel lane planı gösterilir.
+            Güncellemeyi patch patch yapabiliriz.
           </div>
         </section>
       </div>
