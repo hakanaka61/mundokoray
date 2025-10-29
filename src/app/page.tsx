@@ -17,7 +17,7 @@ type ChampInfo = {
   icon: string; // full URL
 };
 
-// Riot'tan en son patch versiyonunu çek
+// Riot'tan patch versiyonunu çek
 async function fetchLatestVersion(): Promise<string> {
   try {
     const versions = await fetch(
@@ -29,7 +29,7 @@ async function fetchLatestVersion(): Promise<string> {
   }
 }
 
-// Şampiyon listesini (isim + ikon) çek
+// Şampiyon listesini çek
 async function fetchChampionList(version: string): Promise<ChampInfo[]> {
   const data = await fetch(
     `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`
@@ -47,7 +47,7 @@ async function fetchChampionList(version: string): Promise<ChampInfo[]> {
     });
   });
 
-  // Dr. Mundo'yu yukarı al, kalanları alfabetik sırala
+  // Dr. Mundo'yu üstte tut
   arr.sort((a, b) => {
     if (a.id === "DrMundo") return -1;
     if (b.id === "DrMundo") return 1;
@@ -57,7 +57,7 @@ async function fetchChampionList(version: string): Promise<ChampInfo[]> {
   return arr;
 }
 
-// difficulty -> chip text + renk tonu
+// Difficulty -> chip görünümü
 function getDifficultyChip(d: MundoMatchup["difficulty"]) {
   if (d === "TEHLIKELI") {
     return { label: "TEHLİKELİ", tone: "danger" as const };
@@ -68,10 +68,21 @@ function getDifficultyChip(d: MundoMatchup["difficulty"]) {
   return { label: "DENGELİ", tone: "default" as const };
 }
 
+// Skeleton kartı (şampiyon listesi yüklenirken)
+function ChampSkeleton() {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border p-2 bg-slate-900/40 border-slate-700 animate-pulse">
+      <div className="w-7 h-7 rounded-full bg-slate-700" />
+      <div className="w-16 h-3 rounded bg-slate-700" />
+    </div>
+  );
+}
+
 export default function Page() {
-  // Riot versiyon + şampiyon listesi
+  // Riot versiyon + şamp listesi
   const [ddVersion, setDdVersion] = useState<string>("");
   const [champions, setChampions] = useState<ChampInfo[]>([]);
+  const [loadingChamps, setLoadingChamps] = useState<boolean>(true);
 
   // Kullanıcının seçtiği rakip
   const [search, setSearch] = useState<string>(""); // arama kutusu
@@ -83,10 +94,12 @@ export default function Page() {
   // ilk yüklemede Riot verilerini getir
   useEffect(() => {
     (async () => {
+      setLoadingChamps(true);
       const v = await fetchLatestVersion();
       setDdVersion(v);
       const list = await fetchChampionList(v);
       setChampions(list);
+      setLoadingChamps(false);
     })();
   }, []);
 
@@ -125,73 +138,89 @@ export default function Page() {
     <main className="flex items-start justify-center w-full p-4 sm:p-6 md:p-10 bg-slate-900 text-slate-50 min-h-screen">
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* SOL PANEL */}
-        <section className="rounded-3xl bg-slate-800/60 border border-slate-700 p-5 md:p-6">
-          <button className="text-slate-300 hover:text-slate-100 mb-4 text-sm">
+        <section className="rounded-3xl bg-slate-800/60 border border-slate-700 p-5 md:p-6 flex flex-col">
+          <button
+            className="text-slate-300 hover:text-slate-100 mb-4 text-sm self-start"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.history.back();
+              }
+            }}
+          >
             ←
           </button>
 
-          <h1 className="text-3xl font-extrabold tracking-tight">
-            Maç Rehberi
-          </h1>
+          <div className="flex-1">
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              Maç Rehberi
+            </h1>
 
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            {/* Benim Şampiyonum */}
-            <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4 flex flex-col items-center gap-2">
-              <img
-                src={mundoIcon}
-                className="w-16 h-16 rounded-full object-cover"
-                alt="Dr. Mundo"
-              />
-              <div className="text-center">
-                <div className="text-slate-300 text-xs">
-                  Benim Şampiyonum
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              {/* Benim Şampiyonum */}
+              <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4 flex flex-col items-center gap-2">
+                <img
+                  src={mundoIcon}
+                  className="w-16 h-16 rounded-full object-cover"
+                  alt="Dr. Mundo"
+                />
+                <div className="text-center">
+                  <div className="text-slate-300 text-xs">
+                    Benim Şampiyonum
+                  </div>
+                  <div className="text-lg font-semibold">Dr. Mundo</div>
                 </div>
-                <div className="text-lg font-semibold">Dr. Mundo</div>
-              </div>
-            </div>
-
-            {/* Rakip Şampiyon */}
-            <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4">
-              <div className="text-center text-slate-300 text-xs">
-                Rakip Şampiyon
               </div>
 
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ara: Gwen, Darius..."
-                className="mt-2 w-full rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              {/* Rakip Şampiyon */}
+              <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4">
+                <div className="text-center text-slate-300 text-xs">
+                  Rakip Şampiyon
+                </div>
 
-              <div className="mt-3 max-h-64 overflow-auto grid grid-cols-3 gap-2 text-left">
-                {filteredChamps.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setEnemy(c.name);
-                    }}
-                    className={
-                      "flex items-center gap-2 rounded-xl border p-2 transition text-left " +
-                      (enemy === c.name
-                        ? "bg-emerald-600/20 border-emerald-500"
-                        : "bg-slate-900/40 border-slate-700 hover:border-slate-500")
-                    }
-                    title={c.title}
-                  >
-                    <img
-                      src={c.icon}
-                      className="w-7 h-7 rounded-full"
-                      alt={c.name}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </button>
-                ))}
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ara: Gwen, Darius..."
+                  className="mt-2 w-full rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+
+                <div className="mt-3 max-h-64 overflow-auto grid grid-cols-3 gap-2 text-left">
+                  {loadingChamps &&
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <ChampSkeleton key={i} />
+                    ))}
+
+                  {!loadingChamps &&
+                    filteredChamps.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          setEnemy(c.name);
+                        }}
+                        className={
+                          "flex items-center gap-2 rounded-xl border p-2 transition text-left " +
+                          (enemy === c.name
+                            ? "bg-emerald-600/20 border-emerald-500"
+                            : "bg-slate-900/40 border-slate-700 hover:border-slate-500")
+                        }
+                        title={c.title}
+                      >
+                        <img
+                          src={c.icon}
+                          className="w-7 h-7 rounded-full"
+                          alt={c.name}
+                        />
+                        <span className="text-sm">{c.name}</span>
+                      </button>
+                    ))}
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Sticky CTA */}
           <button
-            className="mt-6 w-full rounded-2xl bg-orange-600 hover:bg-orange-500 active:scale-[.99] text-white font-semibold py-3 tracking-wide"
+            className="mt-6 md:mt-6 w-full rounded-2xl bg-orange-600 hover:bg-orange-500 active:scale-[.99] text-white font-semibold py-3 tracking-wide md:static sticky bottom-0 left-0 right-0"
             onClick={() => {
               detailRef.current?.scrollIntoView({
                 behavior: "smooth",
@@ -207,7 +236,14 @@ export default function Page() {
           ref={detailRef}
           className="rounded-3xl bg-slate-800/60 border border-slate-700 p-5 md:p-6 space-y-4"
         >
-          <button className="text-slate-300 hover:text-slate-100 text-sm">
+          <button
+            className="text-slate-300 hover:text-slate-100 text-sm"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.history.back();
+              }
+            }}
+          >
             ←
           </button>
 
@@ -228,14 +264,22 @@ export default function Page() {
             <div className="text-slate-200 font-semibold">{enemy}</div>
           </div>
 
-          {/* Zorluk / Winrate chipleri */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip tone={diffChip.tone}>{diffChip.label}</Chip>
+          {/* Zorluk / Winrate / Neden zor? */}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone={diffChip.tone}>{diffChip.label}</Chip>
 
-            {typeof matchup.winrateHint === "number" && (
-              <Chip>
-                {`Winrate ipucu: ${matchup.winrateHint.toFixed(1)}%`}
-              </Chip>
+              {typeof matchup.winrateHint === "number" && (
+                <Chip>
+                  {`Winrate ipucu: ${matchup.winrateHint.toFixed(1)}%`}
+                </Chip>
+              )}
+            </div>
+
+            {matchup.difficultyReason && (
+              <p className="text-sm text-slate-400 leading-snug">
+                {matchup.difficultyReason}
+              </p>
             )}
           </div>
 
@@ -243,7 +287,7 @@ export default function Page() {
           <Section title="ÖNCE BUNU (Core Items)">
             <div className="grid gap-2 sm:grid-cols-2">
               {matchup.core_items.map((it, i) => (
-                <ItemPill key={i} item={it} />
+                <ItemPill key={i} item={it} featured={i === 0} />
               ))}
             </div>
 
